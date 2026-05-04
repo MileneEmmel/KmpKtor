@@ -32,4 +32,11 @@ in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and r
 
 ---
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)
+
+### Architecture Notes (Aula 08 - Ktor)
+
+- **State retention**: `PostsViewModel` exposes a `StateFlow<PostsUiState>` that keeps the list of posts, current filter, and pagination progress across UI recompositions.
+- **Loading/Success/Error status**: the UI reads `PostsStatus` to show a loading indicator and to render error feedback.
+- **Error handling**: `PostsRepository.getPosts` maps HTTP status codes (404, 5xx, other 4xx) and network failures into a typed error shown to the user.
+- **Recovery**: when an error happens, the UI shows a clear message and a "Tentar novamente" button that calls `viewModel.retry()`.

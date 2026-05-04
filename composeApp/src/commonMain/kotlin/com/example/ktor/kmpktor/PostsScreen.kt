@@ -27,24 +27,27 @@ import androidx.compose.ui.text.input.KeyboardType
 @Composable
 fun PostsScreen() {
     val viewModel = remember { PostsViewModel() }
-    val posts by viewModel.posts.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val posts = uiState.posts
+    val isLoading = uiState.status is PostsStatus.Loading
+    val error = (uiState.status as? PostsStatus.Error)?.error
 
     var userIdText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    val softPinkBorder = Color(0xFFF48FB1)
-    val softPinkButton = Color(0xFFF48FB1)
+    val softPinkBorder = Color(0xFFF2BFD9)
+    val softPinkButton = Color(0xFFF2BFD9)
 
     LaunchedEffect(Unit) {
-        // initial load
-        viewModel.loadNextPage()
+        viewModel.ensureLoaded()
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
-            text = "Posts",
-            style = MaterialTheme.typography.headlineSmall,
+            text = "POSTS",
+            style = MaterialTheme.typography.headlineMedium,
+            color = softPinkButton,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
@@ -87,12 +90,75 @@ fun PostsScreen() {
             }
         }
 
-        Text(
-            text = if (userIdText.isBlank()) "Filtro atual: todos" else "Filtro atual: userId=${userIdText}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 6.dp)
-        )
+        if (error != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "\u26A0",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color(0xFFB71C1C)
+                        )
+                        Text(
+                            text = error.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF424242)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { viewModel.retry() },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = softPinkButton,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Tentar novamente")
+                    }
+                }
+            }
+        }
+
+        if (!isLoading && posts.isEmpty() && error == null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F6)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "\u2139",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF616161)
+                    )
+                    Text(
+                        text = "Nenhum resultado. Tente outro userId ou limpe o filtro.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF616161)
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -132,11 +198,17 @@ fun PostsScreen() {
 
 @Composable
 private fun PostItem(index: Int, title: String, body: String, userId: Int) {
+    val cardBackground = Color(0xFFF8DEED)
+    val cardBorder = Color(0xFFF8BBD0)
+    val titleGray = Color(0xFF5A5A5A)
+    val bodyGray = Color(0xFF7A7A7A)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F6))
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, cardBorder)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(
@@ -144,28 +216,25 @@ private fun PostItem(index: Int, title: String, body: String, userId: Int) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Text(
-                        text = "#${index}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF424242)
-                    )
-                }
                 Text(
                     text = "User ${userId}",
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF424242)
+                    color = bodyGray
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = titleGray
+            )
             Spacer(modifier = Modifier.height(6.dp))
-            Text(text = body, style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodyMedium,
+                color = bodyGray
+            )
         }
     }
 }
